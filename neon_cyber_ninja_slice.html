@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Cyber-Ninja Slice</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        orbitron: ['Orbitron', 'sans-serif'],
+                        rajdhani: ['Rajdhani', 'sans-serif'],
+                    },
+                    colors: {
+                        cyber: {
+                            bg: '#05050a',
+                            panel: '#0c0c16',
+                            border: '#1f1f38',
+                            cyan: '#00f0ff',
+                            magenta: '#ff007f',
+                            yellow: '#f3e600',
+                            purple: '#9d00ff'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background-color: #05050a;
+            color: #f0f0f5;
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+        }
+        .font-cyber {
+            font-family: 'Orbitron', sans-serif;
+        }
+        .neon-glow-cyan {
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.7), 0 0 20px rgba(0, 240, 255, 0.5);
+        }
+        .neon-glow-magenta {
+            text-shadow: 0 0 10px rgba(255, 0, 127, 0.7), 0 0 20px rgba(255, 0, 127, 0.5);
+        }
+        .neon-box-cyan {
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.4), inset 0 0 15px rgba(0, 240, 255, 0.2);
+        }
+        .neon-box-magenta {
+            box-shadow: 0 0 15px rgba(255, 0, 127, 0.4), inset 0 0 15px rgba(255, 0, 127, 0.2);
+        }
+        .scanlines {
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.25) 50%
+            ), linear-gradient(
+                90deg,
+                rgba(255, 0, 0, 0.03),
+                rgba(0, 255, 0, 0.01),
+                rgba(0, 0, 255, 0.03)
+            );
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+        }
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.8; filter: drop-shadow(0 0 8px var(--glow-color)); }
+            50% { opacity: 1; filter: drop-shadow(0 0 18px var(--glow-color)); }
+        }
+        .anim-pulse {
+            animation: pulseGlow 2s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="w-screen h-screen flex flex-col justify-between relative">
+
+    <div class="absolute inset-0 scanlines z-40"></div>
+
+    <div id="canvas-container" class="absolute inset-0 z-10 overflow-hidden bg-cyber-bg">
+        <canvas id="gameCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+    </div>
+
+    <div id="hud-screen" class="absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-4 md:p-6 hidden">
+        <!-- Top HUD Bar -->
+        <div class="flex justify-between items-center w-full max-w-7xl mx-auto">
+            <!-- Score & Level -->
+            <div class="flex items-center space-x-6 bg-cyber-panel/80 backdrop-blur-md border border-cyber-cyan/40 px-5 py-2.5 rounded-2xl neon-box-cyan">
+                <div>
+                    <div class="text-xs uppercase tracking-widest text-cyber-cyan font-cyber">Score</div>
+                    <div id="hud-score" class="text-3xl font-black font-cyber text-white">0</div>
+                </div>
+                <div class="h-8 w-px bg-cyber-border"></div>
+                <div>
+                    <div class="text-xs uppercase tracking-widest text-cyber-magenta font-cyber">Level</div>
+                    <div id="hud-level" class="text-2xl font-bold font-cyber text-white">1</div>
+                </div>
+            </div>
+
+            <!-- Lives & Combo -->
+            <div class="flex items-center space-x-4">
+                <div id="hud-combo" class="hidden animate-bounce bg-cyber-magenta/20 border border-cyber-magenta px-4 py-1.5 rounded-full text-cyber-magenta font-cyber font-bold text-sm neon-glow-magenta">
+                    3x COMBO!
+                </div>
+                <div id="hud-lives" class="flex space-x-2 bg-cyber-panel/80 backdrop-blur-md border border-cyber-border px-4 py-3 rounded-2xl">
+                    <i class="fa-solid fa-heart text-red-500 text-xl filter drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]"></i>
+                    <i class="fa-solid fa-heart text-red-500 text-xl filter drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]"></i>
+                    <i class="fa-solid fa-heart text-red-500 text-xl filter drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]"></i>
+                </div>
+                <!-- Pause Button -->
+                <button id="pause-btn" class="pointer-events-auto bg-cyber-panel/90 border border-cyber-cyan/50 hover:border-cyber-cyan text-cyber-cyan p-3 rounded-xl transition-all duration-300 hover:scale-105 shadow-lg">
+                    <i class="fa-solid fa-pause text-xl"></i>
+                </button>
+                <button id="fullscreen-btn" class="pointer-events-auto hidden sm:flex bg-cyber-panel/90 border border-cyber-cyan/50 hover:border-cyber-cyan text-cyber-cyan p-3 rounded-xl transition-all duration-300 hover:scale-105 shadow-lg">
+                    <i class="fa-solid fa-expand text-xl"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Floating Combo / Slash Messages Container -->
+        <div id="floating-msgs" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
+    </div>
+
+    <div id="menu-screen" class="absolute inset-0 z-30 flex items-center justify-center p-4 bg-cyber-bg/90 backdrop-blur-lg transition-opacity duration-500">
+        <div class="max-w-md w-full bg-cyber-panel/90 border border-cyber-cyan/40 p-8 rounded-3xl neon-box-cyan text-center relative overflow-hidden">
+            <div class="absolute -top-12 -right-12 w-36 h-36 bg-cyber-cyan/10 rounded-full blur-2xl"></div>
+            <div class="absolute -bottom-12 -left-12 w-36 h-36 bg-cyber-magenta/10 rounded-full blur-2xl"></div>
+            
+            <div class="inline-block p-3 bg-cyber-cyan/10 border border-cyber-cyan/30 rounded-2xl mb-4 text-cyber-cyan animate-pulse">
+                <i class="fa-solid fa-bolt-lightning text-4xl"></i>
+            </div>
+            <h1 class="text-3xl md:text-4xl font-black font-cyber text-white tracking-wider mb-1 neon-glow-cyan">CYBER-NINJA</h1>
+            <p class="text-cyber-cyan/80 font-cyber tracking-widest text-xs mb-8 uppercase">Neon Slice Protocol v2.4</p>
+
+            <div class="space-y-4">
+                <div class="relative">
+                    <input type="text" id="player-name-input" placeholder="ENTER CODENAME..." maxlength="12" value="NINJA_X" class="w-full bg-cyber-bg/80 border border-cyber-border focus:border-cyber-cyan text-white text-center font-cyber py-3.5 rounded-xl outline-none transition-all tracking-wider">
+                </div>
+                <button id="start-btn" class="w-full py-4 bg-gradient-to-r from-cyber-cyan to-blue-600 text-cyber-bg font-cyber font-black text-lg rounded-xl tracking-wider transition-all duration-300 hover:scale-[1.02] shadow-[0_0_20px_rgba(0,240,255,0.4)] cursor-pointer">
+                    INITIALIZE SLICE
+                </button>
+                <div class="grid grid-cols-2 gap-3">
+                    <button id="leaderboard-btn" class="py-3 bg-cyber-bg border border-cyber-border hover:border-cyber-magenta text-cyber-magenta font-cyber text-sm rounded-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
+                        <i class="fa-solid fa-trophy mr-2"></i> LEADERBOARD
+                    </button>
+                    <button id="instructions-btn" class="py-3 bg-cyber-bg border border-cyber-border hover:border-cyber-cyan text-cyber-cyan font-cyber text-sm rounded-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
+                        <i class="fa-solid fa-book mr-2"></i> PROTOCOLS
+                    </button>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <button id="settings-btn" class="py-3 bg-cyber-bg border border-cyber-border hover:border-cyber-yellow text-cyber-yellow font-cyber text-sm rounded-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
+                        <i class="fa-solid fa-gear mr-2"></i> SETTINGS
+                    </button>
+                    <button id="readme-btn" class="py-3 bg-cyber-bg border border-cyber-border hover:border-purple-400 text-purple-400 font-cyber text-sm rounded-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
+                        <i class="fa-solid fa-file-code mr-2"></i> README.MD
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="pause-screen" class="absolute inset-0 z-30 flex items-center justify-center p-4 bg-cyber-bg/90 backdrop-blur-lg hidden">
+        <div class="max-w-sm w-full bg-cyber-panel/95 border border-cyber-cyan/40 p-6 rounded-3xl neon-box-cyan text-center">
+            <h2 class="text-2xl font-black font-cyber text-white mb-6 neon-glow-cyan">SYSTEM PAUSED</h2>
+            <div class="space-y-3">
+                <button id="resume-btn" class="w-full py-3.5 bg-cyber-cyan text-cyber-bg font-cyber font-bold rounded-xl transition-all hover:scale-105 shadow-lg">
+                    RESUME SIMULATION
+                </button>
+                <button id="restart-game-btn" class="w-full py-3.5 bg-cyber-bg border border-cyber-cyan text-cyber-cyan font-cyber font-bold rounded-xl transition-all hover:scale-105">
+                    RESTART PROTOCOL
+                </button>
+                <button id="quit-btn" class="w-full py-3.5 bg-cyber-bg border border-red-500/50 text-red-400 font-cyber font-bold rounded-xl transition-all hover:scale-105">
+                    ABORT TO MENU
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="gameover-screen" class="absolute inset-0 z-30 flex items-center justify-center p-4 bg-cyber-bg/95 backdrop-blur-xl hidden">
+        <div class="max-w-md w-full bg-cyber-panel/95 border border-cyber-magenta/50 p-8 rounded-3xl neon-box-magenta text-center">
+            <div class="inline-block p-3 bg-cyber-magenta/10 border border-cyber-magenta/30 rounded-2xl mb-3 text-cyber-magenta animate-bounce">
+                <i class="fa-solid fa-skull-crossbones text-4xl"></i>
+            </div>
+            <h2 class="text-3xl font-black font-cyber text-white mb-1 neon-glow-magenta">SESSION TERMINATED</h2>
+            <p class="text-cyber-magenta/80 font-cyber text-xs uppercase tracking-widest mb-6">Neural link disconnected</p>
+
+            <div class="bg-cyber-bg/80 border border-cyber-border p-5 rounded-2xl mb-6 space-y-3">
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-400 font-cyber text-sm">FINAL SCORE</span>
+                    <span id="go-score" class="text-2xl font-black font-cyber text-cyber-cyan">0</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-400 font-cyber text-sm">MAX COMBO</span>
+                    <span id="go-combo" class="text-xl font-bold font-cyber text-cyber-magenta">0x</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-400 font-cyber text-sm">LEVEL REACHED</span>
+                    <span id="go-level" class="text-xl font-bold font-cyber text-cyber-yellow">1</span>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <button id="play-again-btn" class="w-full py-4 bg-gradient-to-r from-cyber-magenta to-purple-600 text-white font-cyber font-black rounded-xl transition-all hover:scale-105 shadow-[0_0_20px_rgba(255,0,127,0.4)]">
+                    RE-ENGAGE SIMULATION
+                </button>
+                <button id="go-menu-btn" class="w-full py-3 bg-cyber-bg border border-cyber-border text-gray-300 font-cyber rounded-xl transition-all hover:scale-105">
+                    RETURN TO MAIN MENU
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="leaderboard-modal" class="absolute inset-0 z-30 flex items-center justify-center p-4 bg-cyber-bg/90 backdrop-blur-lg hidden">
+        <div class="max-w-md w-full bg-cyber-panel/95 border border-cyber-magenta/40 p-6 rounded-3xl neon-box-magenta">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-black font-cyber text-white flex items-center">
+                    <i class="fa-solid fa-trophy text-cyber-magenta mr-3"></i> LEADERBOARD
+                </h3>
+                <button class="close-modal-btn text-gray-400 hover:text-white text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="leaderboard-list" class="space-y-2 mb-6 max-h-64 overflow-y-auto pr-1">
+                <!-- Populated dynamically -->
+            </div>
+            <button class="close-modal-btn w-full py-3 bg-cyber-bg border border-cyber-border text-cyber-magenta font-cyber rounded-xl hover:bg-cyber-magenta/10 transition-all">
+                CLOSE
+            </button>
+        </div>
+    </div>
+
+    <div id="instructions-modal" class="absolute inset-0 z-30 flex items-center justify-center p-4 bg-cyber-bg/90 backdrop-blur-lg hidden">
+        <div class="max-w-lg w-full bg-cyber-panel/95 border border-cyber-cyan/40 p-6 rounded-3xl neon-box-cyan">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-black font-cyber text-white flex items-center">
+                    <i class="fa-solid fa-book text-cyber-cyan mr-3"></i> PROTOCOL MANUAL
+                </h3>
+                <button class="close-modal-btn text-gray-400 hover:text-white text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-4 text-gray-300 font-rajdhani text-base mb-6 max-h-72 overflow-y-auto pr-2">
+                <div class="flex items-start space-x-3 bg-cyber-bg/50 p-3 rounded-xl border border-cyber-border">
+                    <i class="fa-solid fa-hand-pointer text-cyber-cyan text-xl mt-1"></i>
+                    <div>
+                        <strong class="text-white font-cyber text-sm">SLICING MECHANICS</strong>
+                        <p class="text-xs text-gray-400">Click and drag with mouse or swipe with your finger across the screen to slice incoming neon cyber-objects.</p>
+                    </div>
+                </div>
+                <div class="flex items-start space-x-3 bg-cyber-bg/50 p-3 rounded-xl border border-cyber-border">
+                    <i class="fa-solid fa-bomb text-red-500 text-xl mt-1"></i>
+                    <div>
+                        <strong class="text-white font-cyber text-sm">AVOID CYBER-BOMBS</strong>
+                        <p class="text-xs text-gray-400">Hitting a unstable red cyber-bomb causes immediate game over and simulation termination.</p>
+                    </div>
+                </div>
+                <div class="flex items-start space-x-3 bg-cyber-bg/50 p-3 rounded-xl border border-cyber-border">
+                    <i class="fa-solid fa-heart text-red-500 text-xl mt-1"></i>
+                    <div>
+                        <strong class="text-white font-cyber text-sm">LIVES & COMBO STREAKS</strong>
+                        <p class="text-xs text-gray-400">Missing normal cyber-objects costs 1 life heart ❤️. Slice multiple objects in one stroke for massive combo point multipliers!</p>
+                    </div>
+                </div>
+            </div>
+            <button class="close-modal-btn w-full py-3 bg-cyber-bg border border-cyber-border text-cyber-cyan font-cyber rounded-xl hover:bg-cyber-cyan/10 transition-all">
+                UNDERSTOOD
+            </button>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="absolute inset-0 z-30 flex items-center justify-center p-4 bg-cyber-bg/90 backdrop-blur-lg hidden">
+        <div class="max-w-md w-full bg-cyber-panel/95 border border-cyber-yellow/40 p-6 rounded-3xl shadow-[0_0_20px_rgba(243,230,0,0.2)]">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-black font-cyber text-white flex items-center">
+                    <i class="fa-solid fa-gear text-cyber-yellow mr-3"></i> SYSTEM SETTINGS
+                </h3>
+                <button class="close-modal-btn text-gray-400 hover:text-white text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-4 mb-6">
+                <div class="flex justify-between items-center bg-cyber-bg/60 p-4 rounded-xl border border-cyber-border">
+                    <span class="font-cyber text-sm text-gray-300">AUDIO SYNTHESIZER</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="sound-toggle" checked class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyber-yellow"></div>
+                    </label>
+                </div>
+                <div class="flex justify-between items-center bg-cyber-bg/60 p-4 rounded-xl border border-cyber-border">
+                    <span class="font-cyber text-sm text-gray-300">PARTICLE EFFECTS</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="particles-toggle" checked class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyber-yellow"></div>
+                    </label>
+                </div>
+            </div>
+            <button class="close-modal-btn w-full py-3 bg-cyber-bg border border-cyber-border text-cyber-yellow font-cyber rounded-xl hover:bg-cyber-yellow/10 transition-all">
+                SAVE & RETURN
+            </button>
+        </div>
+    </div>
+
+    <div id="readme-modal" class="absolute inset-0 z-30 flex items-center justify-center p-4 bg-cyber-bg/90 backdrop-blur-lg hidden">
+        <div class="max-w-2xl w-full bg-cyber-panel/95 border border-purple-500/40 p-6 rounded-3xl shadow-[0_0_20px_rgba(157,0,255,0.2)]">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-black font-cyber text-white flex items-center">
+                    <i class="fa-solid fa-file-code text-purple-400 mr-3"></i> README.md
+                </h3>
+                <button class="close-modal-btn text-gray-400 hover:text-white text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-4 text-gray-300 font-rajdhani text-sm mb-6 max-h-80 overflow-y-auto pr-2 bg-cyber-bg/70 p-4 rounded-xl border border-cyber-border">
+                <h4 class="font-cyber text-purple-400 font-bold text-base"># Neon Cyber-Ninja Slice</h4>
+                <p>A professional, production-ready Fruit Ninja style arcade game built using pure vanilla HTML5, CSS3, and modern JavaScript with modular classes (`CyberNinjaGame`).</p>
+                
+                <h4 class="font-cyber text-purple-400 font-bold text-base mt-4">## Project Structure</h4>
+                <ul class="list-disc pl-5 space-y-1 text-xs text-gray-400 font-mono">
+                    <li>index.html (Unified markup, Tailwind styles, and modular JS class)</li>
+                    <li>Assets (Procedurally generated shapes, neon particle trails, Web Audio synth)</li>
+                </ul>
+
+                <h4 class="font-cyber text-purple-400 font-bold text-base mt-4">## Core Features</h4>
+                <p>• Web Audio API synthesizer for retro sound effects & background chord progression.<br>• Dynamic canvas physics with arc trajectories and slice splitting mechanics.<br>• LocalStorage high scores and leaderboard tracking.</p>
+            </div>
+            <button class="close-modal-btn w-full py-3 bg-cyber-bg border border-purple-500/50 text-purple-400 font-cyber rounded-xl hover:bg-purple-500/10 transition-all">
+                CLOSE README
+            </button>
+        </div>
+    </div>
+
+    <script>
+        class CyberAudio {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playSlice() {
+                if (!this.enabled) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.15);
+                
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            }
+
+            playBomb() {
+                if (!this.enabled) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.6);
+
+                gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.6);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.6);
+            }
+
+            playGameOver() {
+                if (!this.enabled) return;
+                this.init();
+                const notes = [300, 250, 200, 140];
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.2);
+                    
+                    gain.gain.setValueAtTime(0.4, this.ctx.currentTime + idx * 0.2);
+                    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.2 + 0.25);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(this.ctx.currentTime + idx * 0.2);
+                    osc.stop(this.ctx.currentTime + idx * 0.2 + 0.25);
+                });
+            }
+        }
+
+        class CyberObject {
+            constructor(canvasWidth, canvasHeight, level) {
+                this.x = Math.random() * (canvasWidth - 160) + 80;
+                this.y = canvasHeight + 50;
+                this.radius = Math.random() * 15 + 32;
+                
+                // Physics velocities based on level difficulty
+                const speedMult = 1 + (level - 1) * 0.12;
+                this.vx = (Math.random() - 0.5) * 6 * speedMult;
+                this.vy = -(Math.random() * 4 + 13.5) * speedMult;
+                this.gravity = 0.42;
+
+                this.isBomb = Math.random() < (0.12 + level * 0.02);
+                this.sliced = false;
+                this.rotation = 0;
+                this.rotationSpeed = (Math.random() - 0.5) * 0.1;
+
+                // Cyber color themes
+                const colors = ['#00f0ff', '#ff007f', '#f3e600', '#9d00ff'];
+                this.color = this.isBomb ? '#ff2a2a' : colors[Math.floor(Math.random() * colors.length)];
+                this.icon = this.isBomb ? 'fa-bomb' : ['fa-shield-halved', 'fa-microchip', 'fa-brain', 'fa-atom', 'fa-bolt'][Math.floor(Math.random() * 5)];
+                
+                // Half-split pieces if sliced
+                this.pieces = [];
+            }
+
+            update() {
+                if (!this.sliced) {
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    this.vy += this.gravity;
+                    this.rotation += this.rotationSpeed;
+                } else {
+                    this.pieces.forEach(p => {
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        p.vy += 0.5;
+                        p.rotation += p.rotSpeed;
+                    });
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                if (!this.sliced) {
+                    ctx.translate(this.x, this.y);
+                    ctx.rotate(this.rotation);
+                    ctx.shadowColor = this.color;
+                    ctx.shadowBlur = 15;
+
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = '#0c0c16';
+                    ctx.fill();
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = this.color;
+                    ctx.stroke();
+
+                    // Draw inner icon/shape using font
+                    ctx.font = `${this.radius * 1.1}px "Font Awesome 6 Free"`;
+                    ctx.fillStyle = this.color;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(this.getIconChar(), 0, 0);
+                } else {
+                    this.pieces.forEach(p => {
+                        ctx.save();
+                        ctx.translate(p.x, p.y);
+                        ctx.rotate(p.rotation);
+                        ctx.shadowColor = this.color;
+                        ctx.shadowBlur = 10;
+
+                        ctx.beginPath();
+                        ctx.arc(0, 0, this.radius * 0.7, 0, Math.PI * 2);
+                        ctx.fillStyle = '#0c0c16';
+                        ctx.fill();
+                        ctx.lineWidth = 2;
+                        ctx.strokeStyle = this.color;
+                        ctx.stroke();
+                        ctx.restore();
+                    });
+                }
+                ctx.restore();
+            }
+
+            getIconChar() {
+                switch(this.icon) {
+                    case 'fa-bomb': return '\uf1e2';
+                    case 'fa-shield-halved': return '\uf3ed';
+                    case 'fa-microchip': return '\uf2db';
+                    case 'fa-brain': return '\uf5dc';
+                    case 'fa-atom': return '\uf5d2';
+                    case 'fa-bolt': return '\uf0e7';
+                    default: return '\uf1e2';
+                }
+            }
+
+            sliceObject() {
+                this.sliced = true;
+                this.pieces = [
+                    { x: this.x, y: this.y, vx: this.vx - 3, vy: this.vy - 2, rotation: this.rotation, rotSpeed: -0.15 },
+                    { x: this.x, y: this.y, vx: this.vx + 3, vy: this.vy - 2, rotation: this.rotation, rotSpeed: 0.15 }
+                ];
+            }
+        }
+
+        class CyberNinjaGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.audio = new CyberAudio();
+                
+                this.state = 'MENU'; // MENU, PLAYING, PAUSED, GAMEOVER
+                this.score = 0;
+                this.lives = 3;
+                this.level = 1;
+                this.comboCount = 0;
+                this.maxCombo = 0;
+                this.playerName = 'NINJA_X';
+
+                this.objects = [];
+                this.particles = [];
+                this.slashPoints = [];
+                
+                this.spawnTimer = 0;
+                this.spawnInterval = 70; // frames
+
+                this.settings = { sound: true, particles: true };
+
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+                this.setupListeners();
+                this.loadLeaderboard();
+            }
+
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+
+            setupListeners() {
+                // UI Buttons
+                document.getElementById('start-btn').addEventListener('click', () => {
+                    const nameInput = document.getElementById('player-name-input').value.trim();
+                    if (nameInput) this.playerName = nameInput;
+                    this.startGame();
+                });
+
+                document.getElementById('pause-btn').addEventListener('click', () => this.pauseGame());
+                document.getElementById('resume-btn').addEventListener('click', () => this.resumeGame());
+                document.getElementById('restart-game-btn').addEventListener('click', () => this.startGame());
+                document.getElementById('quit-btn').addEventListener('click', () => this.returnToMenu());
+                document.getElementById('play-again-btn').addEventListener('click', () => this.startGame());
+                document.getElementById('go-menu-btn').addEventListener('click', () => this.returnToMenu());
+
+                document.getElementById('fullscreen-btn').addEventListener('click', () => {
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen().catch(() => {});
+                    } else {
+                        document.exitFullscreen().catch(() => {});
+                    }
+                });
+
+                // Modals
+                const setupModal = (btnId, modalId) => {
+                    document.getElementById(btnId).addEventListener('click', () => {
+                        document.getElementById(modalId).classList.remove('hidden');
+                    });
+                };
+                setupModal('leaderboard-btn', 'leaderboard-modal');
+                setupModal('instructions-btn', 'instructions-modal');
+                setupModal('settings-btn', 'settings-modal');
+                setupModal('readme-btn', 'readme-modal');
+
+                document.querySelectorAll('.close-modal-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.target.closest('.absolute').classList.add('hidden');
+                    });
+                });
+
+                // Settings toggles
+                document.getElementById('sound-toggle').addEventListener('change', (e) => {
+                    this.settings.sound = e.target.checked;
+                    this.audio.enabled = e.target.checked;
+                });
+                document.getElementById('particles-toggle').addEventListener('change', (e) => {
+                    this.settings.particles = e.target.checked;
+                });
+
+                // Mouse / Touch Slicing Mechanics
+                let isMouseDown = false;
+
+                const handleStart = (x, y) => {
+                    if (this.state !== 'PLAYING') return;
+                    isMouseDown = true;
+                    this.slashPoints = [{ x, y, time: Date.now() }];
+                };
+
+                const handleMove = (x, y) => {
+                    if (!isMouseDown || this.state !== 'PLAYING') return;
+                    const now = Date.now();
+                    this.slashPoints.push({ x, y, time: now });
+                    if (this.slashPoints.length > 10) this.slashPoints.shift();
+
+                    this.checkSliceCollisions(x, y);
+                };
+
+                const handleEnd = () => {
+                    isMouseDown = false;
+                    this.slashPoints = [];
+                    if (this.comboCount > 0) {
+                        if (this.comboCount >= 2) {
+                            this.showFloatingText(`${this.comboCount}x COMBO!`, window.innerWidth / 2, window.innerHeight / 3, '#ff007f');
+                        }
+                        this.comboCount = 0;
+                        document.getElementById('hud-combo').classList.add('hidden');
+                    }
+                };
+
+                window.addEventListener('mousedown', (e) => handleStart(e.clientX, e.clientY));
+                window.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY));
+                window.addEventListener('mouseup', handleEnd);
+
+                window.addEventListener('touchstart', (e) => {
+                    if (e.touches.length > 0) handleStart(e.touches[0].clientX, e.touches[0].clientY);
+                }, { passive: true });
+
+                window.addEventListener('touchmove', (e) => {
+                    if (e.touches.length > 0) handleMove(e.touches[0].clientX, e.touches[0].clientY);
+                }, { passive: true });
+
+                window.addEventListener('touchend', handleEnd);
+            }
+
+            startGame() {
+                document.getElementById('menu-screen').classList.add('hidden');
+                document.getElementById('pause-screen').classList.add('hidden');
+                document.getElementById('gameover-screen').classList.add('hidden');
+                document.getElementById('hud-screen').classList.remove('hidden');
+
+                this.score = 0;
+                this.lives = 3;
+                this.level = 1;
+                this.comboCount = 0;
+                this.maxCombo = 0;
+                this.objects = [];
+                this.particles = [];
+                this.spawnTimer = 0;
+                this.state = 'PLAYING';
+
+                this.updateHUD();
+                if (!this.animationFrameId) {
+                    this.loop();
+                }
+            }
+
+            pauseGame() {
+                if (this.state === 'PLAYING') {
+                    this.state = 'PAUSED';
+                    document.getElementById('pause-screen').classList.remove('hidden');
+                }
+            }
+
+            resumeGame() {
+                if (this.state === 'PAUSED') {
+                    this.state = 'PLAYING';
+                    document.getElementById('pause-screen').classList.add('hidden');
+                }
+            }
+
+            returnToMenu() {
+                this.state = 'MENU';
+                document.getElementById('hud-screen').classList.add('hidden');
+                document.getElementById('pause-screen').classList.add('hidden');
+                document.getElementById('gameover-screen').classList.add('hidden');
+                document.getElementById('menu-screen').classList.remove('hidden');
+            }
+
+            gameOver() {
+                this.state = 'GAMEOVER';
+                this.audio.playGameOver();
+                document.getElementById('hud-screen').classList.add('hidden');
+                document.getElementById('gameover-screen').classList.remove('hidden');
+
+                document.getElementById('go-score').innerText = this.score;
+                document.getElementById('go-combo').innerText = `${this.maxCombo}x`;
+                document.getElementById('go-level').innerText = this.level;
+
+                this.saveScore();
+            }
+
+            checkSliceCollisions(x, y) {
+                let slicedThisFrame = 0;
+
+                this.objects.forEach(obj => {
+                    if (!obj.sliced) {
+                        const dist = Math.hypot(obj.x - x, obj.y - y);
+                        if (dist < obj.radius + 15) {
+                            obj.sliceObject();
+                            if (obj.isBomb) {
+                                this.audio.playBomb();
+                                this.createParticles(obj.x, obj.y, '#ff2a2a', 30);
+                                this.gameOver();
+                            } else {
+                                this.audio.playSlice();
+                                slicedThisFrame++;
+                                this.score += 10 * this.level;
+                                this.createParticles(obj.x, obj.y, obj.color, 15);
+                            }
+                        }
+                    }
+                });
+
+                if (slicedThisFrame > 0) {
+                    this.comboCount += slicedThisFrame;
+                    if (this.comboCount > this.maxCombo) this.maxCombo = this.comboCount;
+                    if (this.comboCount >= 2) {
+                        const comboElem = document.getElementById('hud-combo');
+                        comboElem.innerText = `${this.comboCount}x COMBO!`;
+                        comboElem.classList.remove('hidden');
+                    }
+                }
+
+                this.updateHUD();
+            }
+
+            createParticles(x, y, color, count) {
+                if (!this.settings.particles) return;
+                for (let i = 0; i < count; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 8 + 2;
+                    this.particles.push({
+                        x, y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        alpha: 1,
+                        color,
+                        radius: Math.random() * 3 + 2
+                    });
+                }
+            }
+
+            showFloatingText(text, x, y, color) {
+                const container = document.getElementById('floating-msgs');
+                const el = document.createElement('div');
+                el.className = 'absolute font-cyber font-black text-2xl pointer-events-none transition-all duration-700 transform -translate-x-1/2 -translate-y-1/2';
+                el.style.left = `${x}px`;
+                el.style.top = `${y}px`;
+                el.style.color = color;
+                el.style.textShadow = `0 0 10px ${color}`;
+                el.innerText = text;
+                container.appendChild(el);
+
+                setTimeout(() => {
+                    el.style.transform = 'translate(-50%, -80px) scale(1.3)';
+                    el.style.opacity = '0';
+                }, 50);
+
+                setTimeout(() => el.remove(), 800);
+            }
+
+            updateHUD() {
+                document.getElementById('hud-score').innerText = this.score;
+                document.getElementById('hud-level').innerText = this.level;
+
+                // Update level progression based on score
+                this.level = Math.floor(this.score / 200) + 1;
+
+                // Render lives hearts
+                let heartsHtml = '';
+                for (let i = 0; i < 3; i++) {
+                    const active = i < this.lives;
+                    heartsHtml += `<i class="fa-solid fa-heart text-xl ${active ? 'text-red-500 filter drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]' : 'text-gray-700'}"></i>`;
+                }
+                document.getElementById('hud-lives').innerHTML = heartsHtml;
+            }
+
+            update() {
+                if (this.state !== 'PLAYING') return;
+
+                // Spawn logic
+                this.spawnTimer++;
+                const dynamicInterval = Math.max(25, this.spawnInterval - (this.level - 1) * 8);
+                if (this.spawnTimer >= dynamicInterval) {
+                    this.spawnTimer = 0;
+                    const count = Math.random() < 0.3 ? 2 : 1;
+                    for (let i = 0; i < count; i++) {
+                        this.objects.push(new CyberObject(this.canvas.width, this.canvas.height, this.level));
+                    }
+                }
+
+                // Update objects
+                for (let i = this.objects.length - 1; i >= 0; i--) {
+                    const obj = this.objects[i];
+                    obj.update();
+
+                    // Check missed objects (fell off bottom without being sliced)
+                    if (!obj.sliced && obj.y > this.canvas.height + 100) {
+                        if (!obj.isBomb) {
+                            this.lives--;
+                            this.updateHUD();
+                            if (this.lives <= 0) {
+                                this.gameOver();
+                            }
+                        }
+                        this.objects.splice(i, 1);
+                    } else if (obj.sliced && obj.y > this.canvas.height + 100) {
+                        this.objects.splice(i, 1);
+                    }
+                }
+
+                // Update particles
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.2;
+                    p.alpha -= 0.03;
+                    if (p.alpha <= 0) {
+                        this.particles.splice(i, 1);
+                    }
+                }
+            }
+
+            draw() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Draw background grid lines effect
+                this.ctx.strokeStyle = '#121225';
+                this.ctx.lineWidth = 1;
+                const gridSize = 60;
+                for (let x = 0; x < this.canvas.width; x += gridSize) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, 0);
+                    this.ctx.lineTo(x, this.canvas.height);
+                    this.ctx.stroke();
+                }
+                for (let y = 0; y < this.canvas.height; y += gridSize) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, y);
+                    this.ctx.lineTo(this.canvas.width, y);
+                    this.ctx.stroke();
+                }
+
+                // Draw objects
+                this.objects.forEach(obj => obj.draw(this.ctx));
+
+                // Draw particles
+                this.particles.forEach(p => {
+                    this.ctx.save();
+                    this.ctx.globalAlpha = p.alpha;
+                    this.ctx.fillStyle = p.color;
+                    this.ctx.shadowColor = p.color;
+                    this.ctx.shadowBlur = 8;
+                    this.ctx.beginPath();
+                    this.ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.restore();
+                });
+
+                // Draw Neon Blade Slash Trail
+                if (this.slashPoints.length > 1) {
+                    this.ctx.save();
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.slashPoints[0].x, this.slashPoints[0].y);
+                    for (let i = 1; i < this.slashPoints.length; i++) {
+                        this.ctx.lineTo(this.slashPoints[i].x, this.slashPoints[i].y);
+                    }
+                    this.ctx.strokeStyle = '#00f0ff';
+                    this.ctx.lineWidth = 6;
+                    this.ctx.lineCap = 'round';
+                    this.ctx.lineJoin = 'round';
+                    this.ctx.shadowColor = '#00f0ff';
+                    this.ctx.shadowBlur = 20;
+                    this.ctx.stroke();
+
+                    // Inner bright core
+                    this.ctx.strokeStyle = '#ffffff';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.stroke();
+                    this.ctx.restore();
+                }
+            }
+
+            loop() {
+                this.update();
+                this.draw();
+                this.animationFrameId = requestAnimationFrame(() => this.loop());
+            }
+
+            saveScore() {
+                let scores = JSON.parse(localStorage.getItem('cyber_ninja_scores') || '[]');
+                scores.push({ name: this.playerName, score: this.score, level: this.level, date: new Date().toLocaleDateString() });
+                scores.sort((a, b) => b.score - a.score);
+                scores = scores.slice(0, 10); // Keep top 10
+                localStorage.setItem('cyber_ninja_scores', JSON.stringify(scores));
+                this.renderLeaderboardList(scores);
+            }
+
+            loadLeaderboard() {
+                let scores = JSON.parse(localStorage.getItem('cyber_ninja_scores') || '[]');
+                this.renderLeaderboardList(scores);
+            }
+
+            renderLeaderboardList(scores) {
+                const listEl = document.getElementById('leaderboard-list');
+                if (scores.length === 0) {
+                    listEl.innerHTML = `<div class="text-center text-gray-500 py-6 font-cyber text-xs">NO LEADERBOARD RECORDS FOUND</div>`;
+                    return;
+                }
+                listEl.innerHTML = scores.map((s, idx) => `
+                    <div class="flex justify-between items-center bg-cyber-bg/70 p-3 rounded-xl border border-cyber-border">
+                        <div class="flex items-center space-x-3">
+                            <span class="font-cyber font-bold text-sm text-cyber-magenta">#${idx + 1}</span>
+                            <span class="font-cyber font-bold text-white text-sm">${s.name}</span>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <span class="text-xs text-gray-400 font-rajdhani">Lvl ${s.level}</span>
+                            <span class="font-cyber font-black text-cyber-cyan text-base">${s.score}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Initialize game on window load
+        window.addEventListener('load', () => {
+            window.gameInstance = new CyberNinjaGame();
+        });
+    </script>
+</body>
+</html>
